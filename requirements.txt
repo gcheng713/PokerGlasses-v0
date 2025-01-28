@@ -1,3 +1,15 @@
+# Core dependencies
+numpy>=1.21.0
+opencv-python>=4.5.0
+PyYAML>=6.0
+PyQt6>=6.4.0
+
+# Optional ML dependencies (uncomment if needed)
+# tensorflow>=2.8.0
+# torch>=1.10.0
+# torchvision>=0.11.0
+# torchaudio>=0.10.0
+
 asttokens==2.4.1
 backcall==0.2.0
 certifi==2024.7.4
@@ -33,8 +45,6 @@ mkl==2021.4.0
 mpmath==1.3.0
 nest-asyncio==1.6.0
 networkx==3.1
-numpy==1.24.4
-opencv-python==4.10.0.84
 packaging==24.1
 pandas==2.0.3
 parso==0.8.4
@@ -51,8 +61,6 @@ python-dateutil==2.9.0.post0
 pytz==2024.1
 PyWavelets==1.4.1
 pywin32==306
-PyYAML==6.0.1
-pyzmq==26.0.3
 requests==2.32.3
 scikit-image==0.21.0
 scikit-learn>=1.0.2
@@ -64,9 +72,6 @@ stack-data==0.6.3
 sympy==1.12.1
 tbb==2021.13.0
 tifffile==2023.7.10
-tensorflow>=2.13.0
-torch>=2.0.0
-torchvision==0.18.1
 tornado>=6.4.2
 tqdm==4.66.4
 traitlets==5.14.3
