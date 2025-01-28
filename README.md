@@ -50,9 +50,21 @@ cd PokerGlasses
 pip install -r requirements.txt
 ```
 
-4. Configure your smart glasses device settings in `config.yml`
+4. Install machine learning packages if you want to train models locally:
+```bash
+# Install TensorFlow
+pip install tensorflow
 
-5. Build and deploy to your smart glasses device:
+# Install PyTorch (for macOS)
+pip install torch torchvision torchaudio
+
+# For other operating systems, check PyTorch installation commands at:
+# https://pytorch.org/get-started/locally/
+```
+
+5. Configure your smart glasses device settings in `config.yml`
+
+6. Build and deploy to your smart glasses device:
 ```bash
 python setup.py deploy
 ```
