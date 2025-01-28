@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Poker Vision Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .video-container {
+            flex: 1;
+        }
+        .controls-container {
+            flex: 1;
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .game-setup {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #3d3d3d;
+            border-radius: 4px;
+        }
+        .opponent-section {
+            margin-bottom: 20px;
+        }
+        .opponent-card {
+            background-color: #3d3d3d;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .card-display {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .card {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 5px 10px;
+            border-radius: 4px;
+            min-width: 30px;
+            text-align: center;
+        }
+        .card.hearts, .card.diamonds {
+            color: #ff0000;
+        }
+        input, select {
+            background-color: #3d3d3d;
+            color: white;
+            border: 1px solid #4d4d4d;
+            padding: 5px;
+            margin: 5px;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .action-history {
+            max-height: 150px;
+            overflow-y: auto;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #3d3d3d;
+            border-radius: 4px;
+        }
+        .analysis {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #3d3d3d;
+            border-radius: 4px;
+        }
+        .red {
+            color: #ff4444;
+        }
+        .green {
+            color: #4CAF50;
+        }
+        .street-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #3d3d3d;
+            border-radius: 4px;
+        }
+        .message {
+            color: #ff0000;
+        }
+        .card-input {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #3d3d3d;
+            border-radius: 4px;
+        }
+        .card-selectors {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .community-cards {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #3d3d3d;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="video-container">
+            <h2>Card Detection Feed</h2>
+            <img src="{{ url_for('video_feed') }}" width="100%">
+            
+            <div class="card-input">
+                <h3>Your Hole Cards</h3>
+                <div class="card-selectors">
+                    <select id="card1">
+                        <option value="">Select Card 1</option>
+                    </select>
+                    <select id="card2">
+                        <option value="">Select Card 2</option>
+                    </select>
+                    <button onclick="setPlayerCards()">Set Cards</button>
+                </div>
+                <div id="playerCards" class="card-display"></div>
+            </div>
+            
+            <div class="community-cards">
+                <h3>Community Cards</h3>
+                <div id="communityCards" class="card-display"></div>
+                <div id="cardControls" class="mt-3">
+                    <button class="btn btn-primary" onclick="toggleCardEdit()">Edit Cards</button>
+                    <div id="cardEditControls" style="display: none;" class="mt-2">
+                        <select id="cardToAdd" class="form-control mb-2">
+                            <option value="">Select card to add...</option>
+                        </select>
+                        <button class="btn btn-success" onclick="addCard()">Add Card</button>
+                        <button class="btn btn-danger" onclick="removeLastCard()">Remove Last Card</button>
+                    </div>
+                </div>
+                <div id="cardMessage" class="message">Show cards to camera when prompted</div>
+            </div>
+        </div>
+        
+        <div class="controls-container">
+            <div class="game-setup">
+                <h3>Game Setup</h3>
+                <div>
+                    <label>Number of Opponents:</label>
+                    <input type="number" id="numOpponents" min="1" max="8" value="2">
+                </div>
+                <div>
+                    <label>Your Stack:</label>
+                    <input type="number" id="playerStack" value="1000">
+                </div>
+                <button onclick="initializeGame()">Start New Game</button>
+                <button onclick="resetHand()" class="reset-btn">New Hand</button>
+            </div>
+            
+            <div id="opponentSection" class="opponent-section">
+                <h3>Opponents</h3>
+                <!-- Opponent cards will be added here -->
+            </div>
+            
+            <div class="street-controls">
+                <h3>Street Control</h3>
+                <div id="streetStatus">Current Street: Preflop</div>
+                <button onclick="endActionRound()" class="action-btn">End Action Round</button>
+                <div id="streetMessage" class="message"></div>
+            </div>
+            
+            <div class="action-history">
+                <h3>Action History</h3>
+                <div id="actionLog"></div>
+            </div>
+            
+            <div class="analysis">
+                <h3>Analysis & Recommendations</h3>
+                <div id="analysis"></div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <h3>Opponents</h3>
+                    <div id="currentBet" class="alert alert-info">
+                        Current Bet: $<span id="betAmount">0</span>
+                    </div>
+                    <div id="opponents">
+                        <!-- Opponent sections will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let opponents = [];
+        let potSize = 0;
+        let currentStreet = 0;
+        const streetNames = ['Preflop', 'Flop', 'Turn', 'River'];
+        
+        // Initialize card options
+        const suits = ['h', 'd', 'c', 's'];
+        const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+        const cardSelects = [document.getElementById('card1'), document.getElementById('card2')];
+        
+        // Populate card selections
+        cardSelects.forEach(select => {
+            suits.forEach(suit => {
+                ranks.forEach(rank => {
+                    const option = document.createElement('option');
+                    option.value = rank + suit;
+                    option.text = rank.toUpperCase() + suit.toUpperCase();
+                    select.appendChild(option);
+                });
+            });
+        });
+        
+        const CARDS = [
+            '2H','3H','4H','5H','6H','7H','8H','9H','10H','JH','QH','KH','AH',
+            '2D','3D','4D','5D','6D','7D','8D','9D','10D','JD','QD','KD','AD',
+            '2C','3C','4C','5C','6C','7C','8C','9C','10C','JC','QC','KC','AC',
+            '2S','3S','4S','5S','6S','7S','8S','9S','10S','JS','QS','KS','AS'
+        ];
+
+        // Populate card selector
+        const cardSelect = document.getElementById('cardToAdd');
+        CARDS.forEach(card => {
+            const option = document.createElement('option');
+            option.value = card;
+            option.textContent = card;
+            cardSelect.appendChild(option);
+        });
+
+        function toggleCardEdit() {
+            const controls = document.getElementById('cardEditControls');
+            controls.style.display = controls.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function addCard() {
+            const card = document.getElementById('cardToAdd').value;
+            if (!card) return;
+            
+            fetch('/edit_community_cards', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'add',
+                    new_card: card
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    updateGameState();
+                } else {
+                    alert(data.message);
+                }
+            });
+        }
+
+        function removeLastCard() {
+            const cards = document.getElementById('communityCards').children;
+            if (cards.length === 0) return;
+            
+            fetch('/edit_community_cards', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'remove',
+                    card_index: cards.length - 1
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    updateGameState();
+                } else {
+                    alert(data.message);
+                }
+            });
+        }
+        
+        function initializeGame() {
+            const numOpponents = parseInt(document.getElementById('numOpponents').value);
+            const playerStack = parseInt(document.getElementById('playerStack').value);
+            
+            // Initialize all opponents with the same stack for simplicity
+            const stacks = [playerStack];
+            for (let i = 0; i < numOpponents; i++) {
+                stacks.push(playerStack);
+            }
+            
+            fetch('/initialize_game', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    numOpponents: numOpponents,
+                    stacks: stacks
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    setupOpponentControls(numOpponents);
+                    updateAnalysis({});  // Reset analysis
+                }
+            });
+        }
+        
+        function setupOpponentControls(numOpponents) {
+            const section = document.getElementById('opponentSection');
+            section.innerHTML = '<h3>Opponents</h3>';
+            
+            for (let i = 0; i < numOpponents; i++) {
+                const opponentCard = document.createElement('div');
+                opponentCard.className = 'opponent-card';
+                opponentCard.innerHTML = `
+                    <h4>Opponent ${i + 1}</h4>
+                    <div>Stack: $<span id="opponent${i}Stack">1000</span></div>
+                    <div>
+                        <select id="opponent${i}Action" onchange="onActionChange(${i})">
+                            <option value="fold">Fold</option>
+                            <option value="check">Check</option>
+                            <option value="call">Call</option>
+                            <option value="raise">Raise</option>
+                        </select>
+                        <input type="number" id="opponent${i}Amount" placeholder="Amount">
+                        <button onclick="recordAction(${i})">Record Action</button>
+                    </div>
+                    <div>Style: <span id="opponent${i}Style">Unknown</span></div>
+                    <div>Stats: VPIP: <span id="opponent${i}VPIP">0%</span>, 
+                          PFR: <span id="opponent${i}PFR">0%</span></div>
+                `;
+                section.appendChild(opponentCard);
+            }
+        }
+        
+        function recordAction(opponentIdx) {
+            const actionSelect = document.getElementById(`opponent${opponentIdx}Action`);
+            const amountInput = document.getElementById(`opponent${opponentIdx}Amount`);
+            const action = actionSelect.value;
+            let amount = parseInt(amountInput.value) || 0;
+            
+            // Get current bet
+            const currentBet = parseInt(document.getElementById('betAmount').textContent);
+            
+            // Validate amount based on action
+            if (action === 'call') {
+                amount = currentBet;
+                amountInput.value = currentBet;
+            } else if (action === 'fold') {
+                amount = 0;
+                amountInput.value = 0;
+            } else if (action === 'raise') {
+                if (amount <= currentBet) {
+                    alert(`Raise amount must be greater than current bet: $${currentBet}`);
+                    return;
+                }
+            }
+            
+            console.log(`Recording action: ${action} ${amount} for opponent ${opponentIdx}`);
+            
+            fetch('/record_action', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    opponent: opponentIdx,
+                    action: action,
+                    amount: amount
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                // Update current bet display
+                document.getElementById('betAmount').textContent = data.current_bet || 0;
+                
+                // Update action log
+                const actionLog = document.getElementById('actionLog');
+                const actionText = document.createElement('div');
+                actionText.textContent = `Opponent ${opponentIdx + 1}: ${action}${amount ? ' $' + amount : ''}`;
+                actionLog.appendChild(actionText);
+                actionLog.scrollTop = actionLog.scrollHeight;
+                
+                // Update opponent stats
+                document.getElementById(`opponent${opponentIdx}Stack`).textContent = 
+                    data.opponents[opponentIdx].stack;
+                document.getElementById(`opponent${opponentIdx}Style`).textContent = 
+                    data.opponents[opponentIdx].style || 'Unknown';
+                document.getElementById(`opponent${opponentIdx}VPIP`).textContent = 
+                    `${Math.round(data.opponents[opponentIdx].stats.vpip * 100)}%`;
+                document.getElementById(`opponent${opponentIdx}PFR`).textContent = 
+                    `${Math.round(data.opponents[opponentIdx].stats.pfr * 100)}%`;
+                
+                // Clear amount input for non-call actions
+                if (action !== 'call') {
+                    amountInput.value = '';
+                }
+                
+                updateAnalysis(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error recording action');
+            });
+        }
+        
+        function onActionChange(opponentIdx) {
+            const actionSelect = document.getElementById(`opponent${opponentIdx}Action`);
+            const amountInput = document.getElementById(`opponent${opponentIdx}Amount`);
+            const currentBet = parseInt(document.getElementById('betAmount').textContent);
+            
+            if (actionSelect.value === 'call') {
+                amountInput.value = currentBet;
+                amountInput.disabled = true;
+            } else if (actionSelect.value === 'fold') {
+                amountInput.value = 0;
+                amountInput.disabled = true;
+            } else {
+                amountInput.disabled = false;
+                amountInput.value = '';
+                if (actionSelect.value === 'raise') {
+                    amountInput.min = currentBet + 1;
+                }
+            }
+        }
+        
+        function resetHand() {
+            fetch('/reset_hand', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    currentStreet = 0;
+                    document.getElementById('streetStatus').textContent = `Current Street: ${streetNames[currentStreet]}`;
+                    document.getElementById('streetMessage').textContent = '';
+                    document.getElementById('communityCards').innerHTML = '';
+                    document.getElementById('actionLog').innerHTML = '';
+                    updateAnalysis({});
+                }
+            });
+        }
+        
+        function endActionRound() {
+            fetch('/end_action', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    currentStreet = data.current_street;
+                    document.getElementById('streetStatus').textContent = `Current Street: ${streetNames[currentStreet]}`;
+                    const expectedCards = data.expected_cards;
+                    document.getElementById('cardMessage').textContent = 
+                        `Show ${expectedCards} card${expectedCards > 1 ? 's' : ''} to the camera`;
+                    document.getElementById('streetMessage').textContent = `Waiting for ${expectedCards} card${expectedCards > 1 ? 's' : ''}`;
+                } else if (data.status === 'complete') {
+                    document.getElementById('streetMessage').textContent = 'Hand is complete. Click "New Hand" to start over.';
+                    document.getElementById('cardMessage').textContent = '';
+                }
+            });
+        }
+        
+        function setPlayerCards() {
+            const card1 = document.getElementById('card1').value;
+            const card2 = document.getElementById('card2').value;
+            
+            if (card1 && card2) {
+                fetch('/set_player_cards', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        cards: [card1, card2]
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        updateCardDisplay([card1, card2], 'playerCards', true);
+                    }
+                });
+            }
+        }
+        
+        function updateCardDisplay(cards, elementId, isPlayerCards = false) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = '';
+            
+            cards.forEach(card => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                if (card.includes('h') || card.includes('d')) {
+                    cardDiv.className += ' hearts';  // Red for hearts and diamonds
+                }
+                cardDiv.textContent = card.toUpperCase();
+                container.appendChild(cardDiv);
+            });
+            
+            if (cards.length === 0 && isPlayerCards) {
+                container.innerHTML = '<div>Show your cards to the camera</div>';
+            }
+        }
+        
+        function updateAnalysis(data) {
+            const analysisDiv = document.getElementById('analysis');
+            let analysisHtml = '';
+            
+            if (data.hand_strength) {
+                const strengthPercent = Math.round(data.hand_strength * 100);
+                const strengthClass = strengthPercent > 70 ? 'green' : (strengthPercent < 40 ? 'red' : '');
+                analysisHtml += `<p>Hand Strength: <span class="${strengthClass}">${strengthPercent}%</span></p>`;
+            }
+            
+            if (data.pot_odds) {
+                const oddsPercent = Math.round(data.pot_odds * 100);
+                analysisHtml += `<p>Pot Odds: ${oddsPercent}%</p>`;
+            }
+            
+            if (data.opponent_style) {
+                analysisHtml += `<p>Opponent Style: ${data.opponent_style}</p>`;
+            }
+            
+            if (data.action) {
+                analysisHtml += `<p>Recommended Action: ${data.action}</p>`;
+            }
+            
+            if (data.reasoning) {
+                analysisHtml += `<p>Reasoning: ${data.reasoning}</p>`;
+            }
+            
+            analysisDiv.innerHTML = analysisHtml;
+            
+            // Update opponent stats if available
+            if (data.opponents) {
+                data.opponents.forEach((opp, idx) => {
+                    document.getElementById(`opponent${idx}Stack`).textContent = opp.stack;
+                    document.getElementById(`opponent${idx}Style`).textContent = opp.style;
+                    document.getElementById(`opponent${idx}VPIP`).textContent = 
+                        `${Math.round(opp.stats.vpip * 100)}%`;
+                    document.getElementById(`opponent${idx}PFR`).textContent = 
+                        `${Math.round(opp.stats.pfr * 100)}%`;
+                });
+            }
+        }
+        
+        // Periodically update card detection and analysis
+        setInterval(() => {
+            fetch('/get_analysis')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.player_cards) {
+                        updateCardDisplay(data.player_cards, 'playerCards', true);
+                    }
+                    if (data.community_cards) {
+                        updateCardDisplay(data.community_cards, 'communityCards');
+                        console.log('Community cards updated:', data.community_cards);
+                    }
+                    
+                    // Update opponent information
+                    if (data.opponents) {
+                        data.opponents.forEach((opp, idx) => {
+                            document.getElementById(`opponent${idx}Stack`).textContent = opp.stack;
+                            if (opp.style) {
+                                document.getElementById(`opponent${idx}Style`).textContent = opp.style;
+                            }
+                            document.getElementById(`opponent${idx}VPIP`).textContent = 
+                                `${Math.round(opp.stats.vpip * 100)}%`;
+                            document.getElementById(`opponent${idx}PFR`).textContent = 
+                                `${Math.round(opp.stats.pfr * 100)}%`;
+                        });
+                    }
+                    
+                    // Update street status
+                    if (data.current_street !== undefined) {
+                        document.getElementById('streetStatus').textContent = 
+                            `Current Street: ${streetNames[data.current_street]}`;
+                    }
+                    
+                    // Update waiting message
+                    if (data.waiting_for_cards) {
+                        const expectedCards = data.current_street === 0 ? 3 : 1;
+                        document.getElementById('cardMessage').textContent = 
+                            `Show ${expectedCards} card${expectedCards > 1 ? 's' : ''} to the camera`;
+                    }
+                    
+                    updateAnalysis(data);
+                })
+                .catch(error => console.error('Error updating game state:', error));
+        }, 1000);
+        
+        // Initialize with default values
+        initializeGame();
+    </script>
+</body>
+</html>
